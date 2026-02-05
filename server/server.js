@@ -94,9 +94,10 @@ io.on('connection', (socket) => {
 
     // Start Game
     socket.on('startGame', (roomId) => {
-        const room = rooms.get(roomId);
+        const cleanId = roomId?.toString()?.trim()?.toUpperCase();
+        const room = rooms.get(cleanId);
 
-        if (!room) return socket.emit('errorMessage', 'Soba nije pronađena.');
+        if (!room) return socket.emit('errorMessage', `Soba [${cleanId}] nije pronađena.`);
 
         const player = room.players.find(p => p.id === socket.id);
         if (!player || !player.isHost) {
@@ -110,8 +111,8 @@ io.on('connection', (socket) => {
         room.status = 'playing';
         room.currentTurnIndex = 0;
 
-        io.to(roomId).emit('gameStarted', room);
-        io.to(roomId).emit('turnChanged', {
+        io.to(cleanId).emit('gameStarted', room);
+        io.to(cleanId).emit('turnChanged', {
             currentTurnIndex: room.currentTurnIndex,
             activePlayerId: room.players[room.currentTurnIndex].id
         });
@@ -121,8 +122,14 @@ io.on('connection', (socket) => {
 
     // Player Action
     socket.on('playerAction', (roomId, actionData) => {
-        const room = rooms.get(roomId);
-        if (!room || room.status !== 'playing') return;
+        const cleanId = roomId?.toString()?.trim()?.toUpperCase();
+        console.log(`Action [${actionData.type}] in Room [${cleanId}] from ${socket.id}`);
+
+        const room = rooms.get(cleanId);
+        if (!room || room.status !== 'playing') {
+            console.log(`Action failed: Room [${cleanId}] not found or not playing.`);
+            return;
+        }
 
         const activePlayer = room.players[room.currentTurnIndex];
         if (activePlayer.id !== socket.id) {
@@ -130,12 +137,13 @@ io.on('connection', (socket) => {
         }
 
         // Broadcast the action to everyone in the room (including sender)
-        io.to(roomId).emit('gameStateUpdated', actionData);
+        io.to(cleanId).emit('gameStateUpdated', actionData);
     });
 
     // Finish Turn
     socket.on('finishTurn', (roomId) => {
-        const room = rooms.get(roomId);
+        const cleanId = roomId?.toString()?.trim()?.toUpperCase();
+        const room = rooms.get(cleanId);
         if (!room || room.status !== 'playing') return;
 
         const playerIndex = room.players.findIndex(p => p.id === socket.id);

@@ -40,11 +40,10 @@ const getSocketURL = () => {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (isLocal) return `http://${window.location.hostname}:3001`;
   }
-  return '';
+  return ''; // Production must have VITE_SOCKET_URL or it won't connect
 };
 
 const SOCKET_URL = getSocketURL();
-// Ako je prazno, koristiće isti domen (za produkciju) ili localhost (za dev)
 
 const App: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
@@ -72,6 +71,9 @@ const App: React.FC = () => {
   const playersRef = useRef<Player[]>([]);
   const turnIndexRef = useRef(0);
   const roomIdRef = useRef<string | null>(null);
+  const boardTypeRef = useRef<BoardType>('ECONOMY');
+  const handleSwitchBoardRef = useRef<any>(null);
+  const processDiceRollRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -85,6 +87,10 @@ const App: React.FC = () => {
   useEffect(() => {
     roomIdRef.current = roomId;
   }, [roomId]);
+
+  useEffect(() => {
+    boardTypeRef.current = boardType;
+  }, [boardType]);
 
   // Turn Timer logic
   useEffect(() => {
@@ -210,13 +216,13 @@ const App: React.FC = () => {
 
     socketRef.current.on('gameStateUpdated', (data) => {
       if (data.type === 'DICE_ROLL') {
-        processDiceRoll(data.roll, data.playerIdx);
+        processDiceRollRef.current?.(data.roll, data.playerIdx);
       }
       if (data.type === 'BALANCE_UPDATE') {
         setPlayers(prev => prev.map(p => p.id === data.playerId ? { ...p, balance: data.newBalance } : p));
       }
       if (data.type === 'SWITCH_REALM') {
-        handleSwitchBoard(true);
+        handleSwitchBoardRef.current?.(true);
       }
     });
 
@@ -262,6 +268,10 @@ const App: React.FC = () => {
       setIsSwitching(false);
     }, 500);
   }, []);
+
+  useEffect(() => {
+    handleSwitchBoardRef.current = handleSwitchBoard;
+  }, [handleSwitchBoard]);
 
   const checkWinCondition = (updatedPlayers: Player[]) => {
     const winnerPlayer = updatedPlayers.find(p => p.balance >= WIN_THRESHOLD);
@@ -353,10 +363,14 @@ const App: React.FC = () => {
 
     // Trigger action ONLY if it's my turn
     if (playersRef.current[playerIdx].id === socketRef.current?.id) {
-      const currentBoard = boardType === 'ECONOMY' ? ECONOMY_TILES : SUSTAINABILITY_TILES;
+      const currentBoard = boardTypeRef.current === 'ECONOMY' ? ECONOMY_TILES : SUSTAINABILITY_TILES;
       handleTileAction(playerIdx, currentBoard[currentPos]);
     }
   };
+
+  useEffect(() => {
+    processDiceRollRef.current = processDiceRoll;
+  }, [processDiceRoll]);
 
   const onDiceRoll = (val: number) => {
     if (isMoving || !!activeModal || isSwitching || playersRef.current[turnIndexRef.current]?.id !== socketRef.current?.id) return;

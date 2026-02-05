@@ -260,11 +260,9 @@ const App: React.FC = () => {
       socketRef.current?.emit('playerAction', roomIdRef.current, { type: 'SWITCH_REALM' });
     }
     setTimeout(() => {
-      setBoardType(prev => {
-        const next = prev === 'ECONOMY' ? 'SUSTAINABILITY' : 'ECONOMY';
-        addLog(`REALM SHIFT: Switched to ${next === 'ECONOMY' ? 'Financial Hub' : 'Nature Reserve'}!`);
-        return next;
-      });
+      const next = boardTypeRef.current === 'ECONOMY' ? 'SUSTAINABILITY' : 'ECONOMY';
+      setBoardType(next);
+      addLog(`REALM SHIFT: Switched to ${next === 'ECONOMY' ? 'Financial Hub' : 'Nature Reserve'}!`);
       setIsSwitching(false);
     }, 500);
   }, []);

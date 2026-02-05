@@ -54,11 +54,13 @@ const App: React.FC = () => {
 
   const [seenQuestions, setSeenQuestions] = useState<Set<string>>(new Set());
   const [seenEnums, setSeenEnums] = useState<Set<string>>(new Set());
+  const [timeLeft, setTimeLeft] = useState(25);
 
   // Refs to avoid stale closures in socket listeners
   const playersRef = useRef<Player[]>([]);
   const turnIndexRef = useRef(0);
   const roomIdRef = useRef<string | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     playersRef.current = players;
@@ -71,6 +73,36 @@ const App: React.FC = () => {
   useEffect(() => {
     roomIdRef.current = roomId;
   }, [roomId]);
+
+  // Turn Timer logic
+  useEffect(() => {
+    if (gameStatus !== 'PLAYING' || isMoving || !!activeModal) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    // Reset timer on turn change
+    setTimeLeft(25);
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          // Auto-skip turn if it's OUR turn
+          if (playersRef.current[turnIndexRef.current]?.id === socketRef.current?.id) {
+            addLog("Time's up! Turn skipped.");
+            socketRef.current?.emit('finishTurn', roomIdRef.current);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [currentPlayerIndex, gameStatus, isMoving, activeModal]);
 
   // Socket Initialization
   useEffect(() => {
@@ -125,7 +157,17 @@ const App: React.FC = () => {
 
     socketRef.current.on('turnChanged', ({ currentTurnIndex }) => {
       setCurrentPlayerIndex(currentTurnIndex);
-      addLog(`Turn changed to ${playersRef.current[currentTurnIndex]?.name}`);
+      const nextPlayer = playersRef.current[currentTurnIndex];
+      addLog(`Turn changed to ${nextPlayer?.name}`);
+
+      // Auto-skip if in JAIL
+      if (nextPlayer?.id === socketRef.current?.id && nextPlayer?.isPrisoned) {
+        addLog("You are in JAIL. Turn skipped.");
+        setPlayers(prev => prev.map(p => p.id === nextPlayer.id ? { ...p, isPrisoned: false } : p));
+        setTimeout(() => {
+          socketRef.current?.emit('finishTurn', roomIdRef.current);
+        }, 2000);
+      }
     });
 
     socketRef.current.on('gameStateUpdated', (data) => {
@@ -134,6 +176,9 @@ const App: React.FC = () => {
       }
       if (data.type === 'BALANCE_UPDATE') {
         setPlayers(prev => prev.map(p => p.id === data.playerId ? { ...p, balance: data.newBalance } : p));
+      }
+      if (data.type === 'SWITCH_REALM') {
+        handleSwitchBoard(true);
       }
     });
 
@@ -165,8 +210,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSwitchBoard = useCallback(() => {
+  const handleSwitchBoard = useCallback((fromSync: boolean = false) => {
     setIsSwitching(true);
+    if (!fromSync) {
+      socketRef.current?.emit('playerAction', roomIdRef.current, { type: 'SWITCH_REALM' });
+    }
     setTimeout(() => {
       setBoardType(prev => {
         const next = prev === 'ECONOMY' ? 'SUSTAINABILITY' : 'ECONOMY';
@@ -238,7 +286,7 @@ const App: React.FC = () => {
         setModalData({ ...randomE, playerIdx });
         shouldUpdateImm = false;
         break;
-      case TileType.PRISON:
+      case TileType.JAIL:
         setPlayers(prev => prev.map((p, i) => i === playerIdx ? { ...p, isPrisoned: true, prisonTurns: 1 } : p));
         break;
     }
@@ -323,9 +371,16 @@ const App: React.FC = () => {
           <div className="flex-1 bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 sm:p-8 shadow-2xl border border-white/10 flex flex-col items-center justify-center gap-4 sm:gap-8 text-white">
             <div className="text-center">
               <h2 className="text-white/40 font-black uppercase tracking-[0.2em] text-[8px] sm:text-[10px] mb-1">Current Turn</h2>
-              <p className="text-white font-black text-xl leading-none">
-                {players[currentPlayerIndex]?.id === socketRef.current?.id ? "Your Turn" : `${players[currentPlayerIndex]?.name}'s Turn`}
-              </p>
+              <div className="flex items-center justify-center gap-3">
+                <p className="text-white font-black text-xl leading-none">
+                  {players[currentPlayerIndex]?.id === socketRef.current?.id ? "Your Turn" : `${players[currentPlayerIndex]?.name}'s Turn`}
+                </p>
+                {gameStatus === 'PLAYING' && !isMoving && !activeModal && (
+                  <span className={`px-2 py-1 rounded-lg font-black text-xs ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-white/10'}`}>
+                    {timeLeft}s
+                  </span>
+                )}
+              </div>
             </div>
             <DiceComponent
               onRoll={onDiceRoll}

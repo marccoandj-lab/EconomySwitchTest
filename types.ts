@@ -9,7 +9,7 @@ export enum TileType {
   QUESTION = 'QUESTION',
   ENUM = 'ENUM',
   SWITCH = 'SWITCH',
-  PRISON = 'PRISON'
+  JAIL = 'JAIL'
 }
 
 export interface TileData {

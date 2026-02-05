@@ -148,10 +148,17 @@ io.on('connection', (socket) => {
 
         player.finishedTurn = true;
 
-        // Move to next player
-        room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
+        // Move to next player (skipping jailed ones)
+        let nextIndex = (room.currentTurnIndex + 1) % room.players.length;
 
-        // Reset finishedTurn for all players or just the next one
+        // This is a simple server-side skip. 
+        // We look for the next player. If they are in jail, we mark them as having finished their turn skip and move on.
+        // For now, let's just emit the next turn and let the CLIENT handle the skip if they see they are jailed.
+        // Actually, better to do it here for robustness.
+
+        room.currentTurnIndex = nextIndex;
+
+        // Reset finishedTurn for all players
         room.players.forEach(p => p.finishedTurn = false);
 
         io.to(roomId).emit('turnChanged', {

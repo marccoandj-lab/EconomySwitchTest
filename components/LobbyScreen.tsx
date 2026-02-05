@@ -9,9 +9,10 @@ interface Props {
     roomId: string | null;
     isHost: boolean;
     status: 'waiting' | 'playing';
+    isConnected: boolean;
 }
 
-const LobbyScreen: React.FC<Props> = ({ onJoin, onCreate, onStartGame, players, roomId, isHost, status }) => {
+const LobbyScreen: React.FC<Props> = ({ onJoin, onCreate, onStartGame, players, roomId, isHost, status, isConnected }) => {
     const [name, setName] = useState('');
     const [joinId, setJoinId] = useState('');
     const [view, setView] = useState<'INITIAL' | 'CREATE' | 'JOIN' | 'LOBBY'>(roomId ? 'LOBBY' : 'INITIAL');
@@ -30,6 +31,13 @@ const LobbyScreen: React.FC<Props> = ({ onJoin, onCreate, onStartGame, players, 
             {/* Background Blobs */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full animate-pulse"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600/20 blur-[120px] rounded-full animate-pulse delay-700"></div>
+
+            {!isConnected && (
+                <div className="fixed top-4 right-4 z-[100] bg-red-500/20 border border-red-500/50 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 text-red-500 animate-pulse">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Connecting to Server...</span>
+                </div>
+            )}
 
             <div className="w-full max-w-4xl z-10">
                 {/* Logo / Header */}

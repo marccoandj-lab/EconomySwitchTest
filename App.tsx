@@ -32,7 +32,18 @@ import AIModal from './components/Modals/AIModal.tsx';
 import LobbyScreen from './components/LobbyScreen.tsx';
 import { Trophy, Users, Info, Wallet, Rocket, UserCircle } from 'lucide-react';
 
-const SOCKET_URL = (import.meta as any).env?.VITE_SOCKET_URL || '';
+const getSocketURL = () => {
+  const envUrl = (import.meta as any).env?.VITE_SOCKET_URL;
+  if (envUrl) return envUrl;
+
+  if (typeof window !== 'undefined') {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) return `http://${window.location.hostname}:3001`;
+  }
+  return '';
+};
+
+const SOCKET_URL = getSocketURL();
 // Ako je prazno, koristiće isti domen (za produkciju) ili localhost (za dev)
 
 const App: React.FC = () => {
@@ -48,6 +59,7 @@ const App: React.FC = () => {
   const [isSwitching, setIsSwitching] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   const [activeModal, setActiveModal] = useState<'ACTION' | 'QUESTION' | 'ENUM' | 'INVEST' | null>(null);
   const [modalData, setModalData] = useState<any>(null);
@@ -106,9 +118,35 @@ const App: React.FC = () => {
 
   // Socket Initialization
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL);
+    if (!SOCKET_URL) {
+      addLog("⚠️ ERROR: Backend server URL (VITE_SOCKET_URL) is not set!");
+      console.error("Missing VITE_SOCKET_URL environment variable.");
+    }
 
-    socketRef.current.on('roomCreated', (room) => {
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      timeout: 10000
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('Connected to server:', socketRef.current?.id);
+      addLog("Connected to multiplayer server.");
+      setIsConnected(true);
+    });
+
+    socketRef.current.on('disconnect', () => {
+      setIsConnected(false);
+      addLog("Disconnected from server.");
+    });
+
+    socketRef.current.on('connect_error', (error: any) => {
+      console.error('Connection Error:', error);
+      setIsConnected(false);
+      addLog("Connection failed. Retrying...");
+    });
+
+    socketRef.current.on('roomCreated', (room: any) => {
       setRoomId(room.roomId);
       setIsHost(true);
       const initialPlayers = room.players.map((p: any, i: number) => ({
@@ -122,7 +160,7 @@ const App: React.FC = () => {
       setPlayers(initialPlayers);
     });
 
-    socketRef.current.on('roomJoined', (room) => {
+    socketRef.current.on('roomJoined', (room: any) => {
       setRoomId(room.roomId);
       setIsHost(room.players.find((p: any) => p.id === socketRef.current?.id)?.isHost || false);
       const initialPlayers = room.players.map((p: any, i: number) => ({
@@ -350,6 +388,7 @@ const App: React.FC = () => {
         roomId={roomId}
         isHost={isHost}
         status="waiting"
+        isConnected={isConnected}
       />
     );
   }

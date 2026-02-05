@@ -85,11 +85,11 @@ io.on('connection', (socket) => {
         };
 
         room.players.push(newPlayer);
-        socket.join(roomId);
+        socket.join(cleanRoomId);
 
-        io.to(roomId).emit('playersUpdate', room.players);
+        io.to(cleanRoomId).emit('playersUpdate', room.players);
         socket.emit('roomJoined', room);
-        console.log(`User ${socket.id} joined room ${roomId}`);
+        console.log(`User ${socket.id} joined room ${cleanRoomId}`);
     });
 
     // Start Game

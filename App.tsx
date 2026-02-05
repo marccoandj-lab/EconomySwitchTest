@@ -203,15 +203,6 @@ const App: React.FC = () => {
       setCurrentPlayerIndex(currentTurnIndex);
       const nextPlayer = playersRef.current[currentTurnIndex];
       addLog(`Turn changed to ${nextPlayer?.name}`);
-
-      // Auto-skip if in JAIL
-      if (nextPlayer?.id === socketRef.current?.id && nextPlayer?.isPrisoned) {
-        addLog("You are in JAIL. Turn skipped.");
-        setPlayers(prev => prev.map(p => p.id === nextPlayer.id ? { ...p, isPrisoned: false } : p));
-        setTimeout(() => {
-          socketRef.current?.emit('finishTurn', roomIdRef.current);
-        }, 2000);
-      }
     });
 
     socketRef.current.on('gameStateUpdated', (data) => {
@@ -438,10 +429,29 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-            <DiceComponent
-              onRoll={onDiceRoll}
-              disabled={isMoving || !!activeModal || isSwitching || players[currentPlayerIndex]?.id !== socketRef.current?.id}
-            />
+
+            {players[currentPlayerIndex]?.id === socketRef.current?.id && players[currentPlayerIndex]?.isPrisoned ? (
+              <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+                <div className="bg-amber-500/20 border border-amber-500/50 p-4 rounded-2xl text-center">
+                  <p className="text-amber-500 font-black text-xs uppercase tracking-widest mb-1">Status: Imprisoned</p>
+                  <p className="text-white font-bold text-sm">YOU ARE IN JAIL.<br />Turn skipped.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setPlayers(prev => prev.map(p => p.id === socketRef.current?.id ? { ...p, isPrisoned: false } : p));
+                    socketRef.current?.emit('finishTurn', roomIdRef.current);
+                  }}
+                  className="px-6 py-3 bg-white text-slate-950 font-black rounded-xl hover:scale-105 transition-transform uppercase text-xs tracking-widest"
+                >
+                  Confirm & Finish
+                </button>
+              </div>
+            ) : (
+              <DiceComponent
+                onRoll={onDiceRoll}
+                disabled={isMoving || !!activeModal || isSwitching || players[currentPlayerIndex]?.id !== socketRef.current?.id}
+              />
+            )}
           </div>
 
           <div className="p-4 sm:p-6 bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-[1.5rem] flex items-center gap-4 text-white">

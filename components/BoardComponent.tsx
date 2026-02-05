@@ -48,7 +48,7 @@ const BoardComponent: React.FC<Props> = ({ boardType, players }) => {
       case TileType.QUESTION: return 'bg-amber-400 text-white';
       case TileType.ENUM: return 'bg-violet-500 text-white';
       case TileType.SWITCH: return 'bg-indigo-600 text-white ring-4 ring-indigo-400 animate-pulse';
-      case TileType.PRISON: return 'bg-slate-600 text-white';
+      case TileType.JAIL: return 'bg-amber-500 text-white';
       default: return 'bg-white';
     }
   };
@@ -63,7 +63,7 @@ const BoardComponent: React.FC<Props> = ({ boardType, players }) => {
       case TileType.QUESTION: return <HelpCircle style={{ width: size, height: size }} />;
       case TileType.ENUM: return <Briefcase style={{ width: size, height: size }} />;
       case TileType.SWITCH: return <Repeat style={{ width: size, height: size }} />;
-      case TileType.PRISON: return <ShieldAlert style={{ width: size, height: size }} />;
+      case TileType.JAIL: return <ShieldAlert style={{ width: size, height: size }} />;
       default: return null;
     }
   };

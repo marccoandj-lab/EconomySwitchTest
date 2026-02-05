@@ -1,0 +1,8 @@
+{
+  "name": "EconomySwitch",
+  "description": "A multiplayer board game focused on financial literacy and sustainability, featuring dynamic board switching and AI-powered challenges.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

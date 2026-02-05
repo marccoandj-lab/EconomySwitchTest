@@ -255,10 +255,15 @@ const App: React.FC = () => {
   };
 
   const handleSwitchBoard = useCallback((fromSync: boolean = false) => {
-    setIsSwitching(true);
     if (!fromSync) {
+      // If it's a local action, just TELL the server. 
+      // Don't flip locally yet to avoid double-toggle.
       socketRef.current?.emit('playerAction', roomIdRef.current, { type: 'SWITCH_REALM' });
+      return;
     }
+
+    // This block ONLY runs when receiving sync from server (for everyone including the sender)
+    setIsSwitching(true);
     setTimeout(() => {
       const next = boardTypeRef.current === 'ECONOMY' ? 'SUSTAINABILITY' : 'ECONOMY';
       setBoardType(next);
